@@ -36,6 +36,19 @@ Generate a daily schedule that prioritizes tasks based on priority level and tim
 - Describe one tradeoff your scheduler makes.
 - Why is that tradeoff reasonable for this scenario?
 
+**Tradeoff: Exact time match conflict detection vs. overlapping duration checking**
+
+The scheduler detects conflicts by checking if two tasks are scheduled at the **exact same HH:MM time**, rather than checking if their durations overlap. For example, a task at 09:00 lasting 30 minutes will conflict with a task at 09:00 lasting 15 minutes, but NOT with a task at 09:15 lasting 20 minutes (even though they may overlap by 15 minutes).
+
+**Why this tradeoff is reasonable:**
+
+- **Simplicity**: This approach is lightweight and O(n) in complexity, making it fast for real-world pet care scenarios with a typical number of tasks.
+- **User intent**: In pet care, owners often schedule tasks in "slots" (e.g., "morning feeding time", "evening walk"). Checking exact time matches aligns with this mental model rather than precise duration overlap.
+- **MVP approach**: For an initial version, exact matching is sufficient. The system warns users about conflicts and allows them to add tasks anyway, giving owners flexibility while still providing alerts.
+- **Scalability path**: If needed, we can evolve to duration-based overlap detection later without major refactoring—the conflict detection interface stays the same.
+
+This tradeoff prioritizes usability and implementation speed over precision, which is appropriate for a pet care system where tasks are typically discrete, non-overlapping activities.
+
 ---
 
 ## 3. AI Collaboration

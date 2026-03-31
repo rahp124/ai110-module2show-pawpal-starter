@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from typing import List
 
 
@@ -11,15 +12,37 @@ class Task:
 	frequency: str = "daily"
 	priority: int = 1
 	is_completed: bool = False
+	scheduled_date: datetime | None = None
+	scheduled_time: str | None = None  # Time in HH:MM format (e.g., "09:00")
 
-	def mark_complete(self) -> None:
+	def mark_complete(self, pet: Pet | None = None) -> None:
 		"""
-		Mark the task or item as completed.
+		Mark the task as completed and create a recurring task if applicable.
 		
-		Sets the is_completed attribute to True, indicating that this task or item
-		has been finished.
+		Sets the is_completed attribute to True. If the task has a recurring frequency
+		("daily" or "weekly") and a pet is provided, a new task is automatically created
+		for the next occurrence and added to the pet's task list.
+		
+		Args:
+			pet (Pet | None): The pet object to add the recurring task to. If provided and
+				the task has a recurring frequency, a new task will be created.
 		"""
 		self.is_completed = True
+		
+		# Create recurring task if applicable
+		recurrence_days = {"daily": 1, "weekly": 7}
+		if pet is not None and self.frequency in recurrence_days:
+			next_date = datetime.now() + timedelta(days=recurrence_days[self.frequency])
+			
+			new_task = Task(
+				description=self.description,
+				time_minutes=self.time_minutes,
+				frequency=self.frequency,
+				priority=self.priority,
+				is_completed=False,
+				scheduled_date=next_date
+			)
+			pet.add_task(new_task)
 
 	def mark_incomplete(self) -> None:
 		"""
@@ -60,11 +83,9 @@ class Pet:
 		Returns:
 			bool: True if the task was found and removed, False otherwise.
 		"""
-		for i, task in enumerate(self.tasks):
-			if task.description == task_description:
-				del self.tasks[i]
-				return True
-		return False
+		initial_length = len(self.tasks)
+		self.tasks = [task for task in self.tasks if task.description != task_description]
+		return len(self.tasks) < initial_length
 
 	def get_tasks(self) -> List[Task]:
 		"""
@@ -122,11 +143,9 @@ class Owner:
 		Returns:
 			bool: True if the pet was found and removed, False otherwise.
 		"""
-		for i, pet in enumerate(self.pets):
-			if pet.name == pet_name:
-				del self.pets[i]
-				return True
-		return False
+		initial_length = len(self.pets)
+		self.pets = [pet for pet in self.pets if pet.name != pet_name]
+		return len(self.pets) < initial_length
 
 	def get_pets(self) -> List[Pet]:
 		"""
@@ -149,16 +168,77 @@ class Owner:
 			List[Task]: A list of Task objects collected from all pets, filtered based on the
 				completion status as specified by the include_completed parameter.
 		"""
-		all_tasks: List[Task] = []
-		for pet in self.pets:
-			if include_completed:
-				all_tasks.extend(pet.get_tasks())
-			else:
-				all_tasks.extend(pet.get_pending_tasks())
-		return all_tasks
+		task_getter = (lambda pet: pet.get_tasks()) if include_completed else (lambda pet: pet.get_pending_tasks())
+		return [task for pet in self.pets for task in task_getter(pet)]
 
 
 class Scheduler:
+	def detect_conflicts(self, pet: Pet, new_task: Task) -> bool:
+		"""
+		Detect if a new task conflicts with existing tasks based on scheduled time.
+		
+		Checks if the new task is scheduled at the same time (HH:MM) as any existing
+		task for the pet. If a conflict is found, prints a warning message.
+		
+		Args:
+			pet (Pet): The pet whose tasks to check for conflicts.
+			new_task (Task): The task to check for conflicts.
+		
+		Returns:
+			bool: True if a conflict is detected, False otherwise.
+		"""
+		if new_task.scheduled_time is None:
+			return False
+		
+		conflicting_task = next(
+			(task for task in pet.get_tasks() if task.scheduled_time == new_task.scheduled_time),
+			None
+		)
+		
+		if conflicting_task:
+			print(f"Warning: Task conflict detected at {new_task.scheduled_time} "
+				f"between {conflicting_task.description} and {new_task.description}")
+		return conflicting_task is not None
+	
+	def add_task_with_conflict_detection(self, pet: Pet, new_task: Task) -> None:
+		"""
+		Add a task to a pet with conflict detection.
+		
+		Detects and prints warnings for any time conflicts, but adds the task regardless.
+		
+		Args:
+			pet (Pet): The pet to add the task to.
+			new_task (Task): The task to add.
+		
+		Returns:
+			None
+		"""
+		self.detect_conflicts(pet, new_task)
+		pet.add_task(new_task)
+
+	def filter_tasks_by_completion(self, owner: Owner, is_completed: bool) -> List[Task]:
+		"""
+			Filter all tasks for the owner's pets by completion status.
+			Args:
+				owner (Owner): The owner whose pets' tasks to filter.
+				is_completed (bool): True to get completed tasks, False for incomplete tasks.
+			Returns:
+				List[Task]: List of tasks matching the completion status.
+		"""
+		all_tasks = owner.get_all_tasks(include_completed=True)
+		return [task for task in all_tasks if task.is_completed == is_completed]
+
+	def filter_tasks_by_pet_name(self, owner: Owner, pet_name: str) -> List[Task]:
+		"""
+			Filter all tasks for a specific pet by name.
+			Args:
+				owner (Owner): The owner whose pets' tasks to filter.
+				pet_name (str): The name of the pet whose tasks to retrieve.
+			Returns:
+				List[Task]: List of tasks for the specified pet, or empty if not found.
+		"""
+		pet = next((pet for pet in owner.get_pets() if pet.name == pet_name), None)
+		return pet.get_tasks() if pet else []
 	def generate_daily_plan(self, owner: Owner, available_time: int) -> List[Task]:
 		"""
 		Generates a daily plan of tasks for the given owner based on available time.
@@ -176,17 +256,14 @@ class Scheduler:
 		if available_time <= 0:
 			return []
 
-		pending_tasks = self.collect_pending_tasks(owner)
-		sorted_tasks = self.sort_by_priority(pending_tasks)
-
-		plan: List[Task] = []
+		plan = []
 		time_used = 0
-
-		for task in sorted_tasks:
+		
+		for task in self.sort_by_priority(self.collect_pending_tasks(owner)):
 			if time_used + task.time_minutes <= available_time:
 				plan.append(task)
 				time_used += task.time_minutes
-
+		
 		return plan
 
 	def collect_pending_tasks(self, owner: Owner) -> List[Task]:
@@ -203,20 +280,23 @@ class Scheduler:
 
 	def sort_by_priority(self, tasks: List[Task]) -> List[Task]:
 		"""
-		Sorts a list of tasks by priority and duration in descending order.
+		Sort tasks by priority and duration in descending order.
 		
-		Tasks are sorted first by priority (highest first), and then by time in minutes
-		(longest first) for tasks with the same priority.
+		Tasks are sorted first by priority (highest first), and secondarily by time duration
+		(longest first) to handle ties. This ensures that high-priority tasks are scheduled first,
+		and among equal-priority tasks, longer tasks are prioritized to fit better in available time.
 		
 		Args:
-			tasks (List[Task]): A list of Task objects to be sorted.
+			tasks (List[Task]): The list of tasks to sort.
 		
 		Returns:
-			List[Task]: A new list of tasks sorted by priority (descending) and time in minutes (descending).
+			List[Task]: A new sorted list of tasks ordered by priority (descending) then duration (descending).
 		
 		Example:
-			>>> tasks = [Task("A", 1, 30), Task("B", 2, 45), Task("C", 1, 20)]
-			>>> sorted_tasks = sort_by_priority(tasks)
-			>>> # Returns tasks sorted by highest priority first, then longest duration
+			Task A: priority=3, time=30 min
+			Task B: priority=5, time=20 min
+			Task C: priority=5, time=10 min
+			
+			Result: [Task B, Task C, Task A] (sorted by -priority, then -time_minutes)
 		"""
-		return sorted(tasks, key=lambda task: (task.priority, -task.time_minutes), reverse=True)
+		return sorted(tasks, key=lambda task: (-task.priority, -task.time_minutes))
