@@ -11,11 +11,16 @@ Generate a daily schedule that prioritizes tasks based on priority level and tim
 
 - Briefly describe your initial UML design.
 - What classes did you include, and what responsibilities did you assign to each?
+  Owner: Represents the pet owner. Holds the list of pets and the owner’s available time. Responsible for adding, removing, and listing pets.
+  Pet: Represents an individual animal. Holds the list of tasks for that pet. Responsible for adding, removing, and retrieving tasks.
+  Task: Represents a single care activity. Contains attributes name, duration, priority, and completion status. Responsible for marking itself complete or incomplete.
+  Scheduler – Responsible for generating a daily plan for all pets. Contains methods to collect incomplete tasks, sort them by priority, and generate a schedule that fits within the owner’s available time.
 
 **b. Design changes**
 
 - Did your design change during implementation?
 - If yes, describe at least one change and why you made it.
+  Added the collect_pending_tasks method in Scheduler to explicitly gather incomplete tasks from all pets before sorting and planning. Splitting out task collection makes the scheduler logic cleaner, easier to test, and prevents duplication of code inside Pet or Owner.
 
 ---
 
