@@ -110,19 +110,123 @@ else:
 
 st.divider()
 
-st.subheader("Build Schedule")
-st.caption("This button should call your scheduling logic once you implement it.")
+st.subheader("📅 Daily Schedule")
+st.caption("View and manage your pet care schedule with conflict detection.")
+
+# Initialize scheduler
+scheduler = Scheduler()
+
+# Pet filter selector
+col1, col2 = st.columns([2, 1])
+with col1:
+    all_pets = [pet.name for pet in st.session_state.owner.get_pets()]
+    selected_pet_filter = st.selectbox(
+        "Filter by pet", 
+        ["All Pets"] + all_pets
+    )
+
+# Task status filter
+with col2:
+    task_status = st.selectbox("Status", ["Pending", "Completed", "All"])
+
+# Get tasks based on filters
+if selected_pet_filter == "All Pets":
+    if task_status == "Pending":
+        filtered_tasks = scheduler.filter_tasks_by_completion(st.session_state.owner, False)
+    elif task_status == "Completed":
+        filtered_tasks = scheduler.filter_tasks_by_completion(st.session_state.owner, True)
+    else:
+        filtered_tasks = st.session_state.owner.get_all_tasks(include_completed=True)
+else:
+    pet_tasks = scheduler.filter_tasks_by_pet_name(st.session_state.owner, selected_pet_filter)
+    if task_status == "Pending":
+        filtered_tasks = [t for t in pet_tasks if not t.is_completed]
+    elif task_status == "Completed":
+        filtered_tasks = [t for t in pet_tasks if t.is_completed]
+    else:
+        filtered_tasks = pet_tasks
+
+# Sort tasks by scheduled time
+sorted_tasks = sorted(
+    filtered_tasks,
+    key=lambda t: t.scheduled_time if t.scheduled_time else "99:99"
+)
+
+# Display schedule
+if sorted_tasks:
+    st.success(f"✅ Showing {len(sorted_tasks)} task(s)")
+    
+    # Create schedule table
+    schedule_data = []
+    for task in sorted_tasks:
+        pet_name = next(
+            (pet.name for pet in st.session_state.owner.get_pets() if task in pet.get_tasks()),
+            "Unknown"
+        )
+        schedule_data.append({
+            "Time": task.scheduled_time or "—",
+            "Pet": pet_name,
+            "Task": task.description,
+            "Duration (min)": task.time_minutes,
+            "Priority": "🔴 High" if task.priority >= 3 else "🟡 Medium" if task.priority >= 2 else "🟢 Low",
+            "Status": "✓ Done" if task.is_completed else "⏳ Pending"
+        })
+    
+    st.table(schedule_data)
+    
+    # Check for conflicts in selected pet
+    if selected_pet_filter != "All Pets":
+        selected_pet = next(
+            (pet for pet in st.session_state.owner.get_pets() if pet.name == selected_pet_filter),
+            None
+        )
+        
+        if selected_pet and len(selected_pet.get_tasks()) > 0:
+            st.markdown("**⚠️ Checking for scheduling conflicts...**")
+            
+            # Find time-based conflicts
+            scheduled_times = {}
+            conflicts_found = False
+            
+            for task in selected_pet.get_tasks():
+                if task.scheduled_time:
+                    if task.scheduled_time in scheduled_times:
+                        conflicts_found = True
+                        st.warning(
+                            f"⏰ **Conflict at {task.scheduled_time}**: "
+                            f"'{scheduled_times[task.scheduled_time]}' and '{task.description}' are both scheduled at the same time."
+                        )
+                    else:
+                        scheduled_times[task.scheduled_time] = task.description
+            
+            if not conflicts_found:
+                st.success(f"✓ No scheduling conflicts detected for {selected_pet_filter}!")
+else:
+    st.info("No tasks to display. Add tasks above and assign scheduled times to see your schedule.")
+
+st.divider()
+
+st.subheader("Build Schedule (Automatic Planning)")
+st.caption("Generate an optimal daily plan based on available time.")
+
+available_minutes = st.slider("Available time (minutes)", min_value=30, max_value=480, value=120)
 
 if st.button("Generate schedule"):
-    st.warning(
-        "Not implemented yet. Next step: create your scheduling logic (classes/functions) and call it here."
-    )
-    st.markdown(
-        """
-Suggested approach:
-1. Design your UML (draft).
-2. Create class stubs (no logic).
-3. Implement scheduling behavior.
-4. Connect your scheduler here and display results.
-"""
-    )
+    daily_plan = scheduler.generate_daily_plan(st.session_state.owner, available_minutes)
+    
+    if daily_plan:
+        total_time = sum(task.time_minutes for task in daily_plan)
+        st.success(f"✅ Generated plan with {len(daily_plan)} tasks ({total_time} minutes)")
+        
+        plan_data = []
+        for task in daily_plan:
+            plan_data.append({
+                "Task": task.description,
+                "Duration": f"{task.time_minutes} min",
+                "Priority": "🔴 High" if task.priority >= 3 else "🟡 Medium" if task.priority >= 2 else "🟢 Low",
+                "Frequency": task.frequency
+            })
+        
+        st.table(plan_data)
+    else:
+        st.warning("No tasks fit in the available time. Try adding tasks or increasing available time.")

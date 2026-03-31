@@ -42,25 +42,43 @@ pip install -r requirements.txt
 6. Connect your logic to the Streamlit UI in `app.py`.
 7. Refine UML so it matches what you actually built.
 
-## Smarter Scheduling
+## Features
 
-This implementation includes advanced scheduling features:
+PawPal+ includes sophisticated algorithms to help pet owners organize and optimize their daily pet care schedules:
 
-### Recurring Tasks
+### 🔄 Intelligent Task Sorting
 
-Tasks with `frequency="daily"` or `frequency="weekly"` automatically create new instances when marked complete. Daily tasks are scheduled for the next day, and weekly tasks for seven days ahead. This eliminates manual re-adding of routine pet care activities.
+Tasks are automatically sorted by **priority** (highest first) and **duration** (longest first), ensuring critical care activities are scheduled before optional ones. This two-tiered sorting maximizes schedule efficiency and pet welfare prioritization.
 
-### Conflict Detection
+### 📅 Smart Recurrence Management
 
-The scheduler detects when two tasks are scheduled at the same time (HH:MM format) and prints a warning, alerting the owner to potential scheduling conflicts. Tasks can still be added despite conflicts, giving users full control while providing helpful guidance.
+Tasks with `daily` or `weekly` frequency automatically regenerate after completion:
 
-### Priority-Based Planning
+- **Daily tasks** reappear the next day, perfect for feeding and walk schedules
+- **Weekly tasks** reappear seven days later for grooming and vet check-ins
+- One-time tasks remain in history once completed
+- Eliminates manual task re-entry while maintaining accurate historical records
 
-The `generate_daily_plan()` method builds an optimal schedule by sorting tasks by priority (highest first) and duration, then fitting as many tasks as possible within the owner's available time. This ensures critical care tasks always get scheduled first.
+### ⚠️ Conflict Detection & Warnings
 
-### Task Filtering
+The scheduler scans for **time collisions** (two tasks scheduled at the same HH:MM) and alerts owners to potential conflicts. This prevents double-booking and helps resolve scheduling overlaps while respecting user autonomy—tasks can still be added despite conflicts.
 
-Multiple filtering options allow owners to view tasks by completion status, specific pet, or priority level, making it easy to focus on what matters most.
+### 🎯 Dynamic Task Filtering
+
+View tasks by multiple criteria:
+
+- **Completion status** (pending vs. completed)
+- **Pet assignment** (tasks for specific pets)
+- **Priority level** (high, medium, low)
+- Quickly focus on what matters most for each pet
+
+### 📊 Constraint-Based Planning
+
+The scheduling engine generates optimal daily plans by fitting the highest-priority tasks within the owner's available time window, ensuring critical pet care never gets postponed.
+
+## 📸 Demo
+
+![PawPal+ Dashboard](demo.png)
 
 ## Testing PawPal+
 
@@ -99,6 +117,7 @@ The test suite includes **13 comprehensive tests** covering three critical areas
 ⭐⭐⭐⭐ (4/5 stars)
 
 **Why 4 stars:**
+
 - ✅ All 13 tests pass consistently
 - ✅ Core scheduling, sorting, and recurrence logic thoroughly validated
 - ✅ Edge cases handled (empty lists, None values, conflicts)

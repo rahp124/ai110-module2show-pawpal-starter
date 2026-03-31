@@ -56,12 +56,16 @@ This tradeoff prioritizes usability and implementation speed over precision, whi
 **a. How you used AI**
 
 - How did you use AI tools during this project (for example: design brainstorming, debugging, refactoring)?
+  I used plan mode whenever I had to ask a design or a quesiton before implementation, and used it to implement the code. It was very helpful in making sure the agent understood what to do before doing it.
 - What kinds of prompts or questions were most helpful?
+  Prompts that were put in after plan mode had way less manual fixes than just pasting a prompt into Copilot Chat.
 
 **b. Judgment and verification**
 
 - Describe one moment where you did not accept an AI suggestion as-is.
+  When generating the one line comments for methods, the inline chats messed up the tab formatting which trigerred Python errors.
 - How did you evaluate or verify what the AI suggested?
+  I compared Copilot’s generated code against my UML design and Python class skeletons. I also used pytest to verify critical behaviors.
 
 ---
 
@@ -70,12 +74,19 @@ This tradeoff prioritizes usability and implementation speed over precision, whi
 **a. What you tested**
 
 - What behaviors did you test?
+  Task Completion, Task Addition/Removal, Sorting by Time, Recurring Tasks, Conflict Detection
 - Why were these tests important?
+  These tests verify the core scheduler logic, which is the backbone of PawPal+.
 
 **b. Confidence**
 
 - How confident are you that your scheduler works correctly?
+  I am moderately to highly confident that the scheduler works correctly for simple daily schedules.
 - What edge cases would you test next if you had more time?
+  Tasks with overlapping durations, not just exact start times.
+  Multiple recurring tasks scheduled at the same time.
+  Handling invalid inputs, such as negative durations or missing times.
+  Large numbers of pets/tasks to evaluate performance and memory usage.
 
 ---
 
@@ -84,11 +95,14 @@ This tradeoff prioritizes usability and implementation speed over precision, whi
 **a. What went well**
 
 - What part of this project are you most satisfied with?
+  I’m most satisfied with the Scheduler class, which successfully coordinates sorting, filtering, recurrence, and conflict detection.
 
 **b. What you would improve**
 
 - If you had another iteration, what would you improve or redesign?
+  I would implement overlap based conflict detection. I’d also add more robust input validation in the UI.
 
 **c. Key takeaway**
 
 - What is one important thing you learned about designing systems or working with AI on this project?
+  AI can accelerate both design and implementation, but careful testing and verification are still essential.
